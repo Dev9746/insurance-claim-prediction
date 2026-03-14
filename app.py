@@ -1,43 +1,32 @@
-import streamlit as st
-import numpy as np
+import pandas as pd
 import joblib
 
-model = joblib.load("model.pkl")
-scaler = joblib.load("scaler.pkl")
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.ensemble import RandomForestClassifier
 
-st.title("Insurance Claim Prediction System")
+df = pd.read_csv("insurance_claims_5000_detailed.csv")
 
-age = st.slider("Age",18,70,30)
+df = df.drop(columns=["Customer_ID"])
 
-gender = st.selectbox("Gender",["Male","Female"])
+le = LabelEncoder()
 
-policy = st.selectbox("Policy Type",["Basic","Premium","Gold"])
+for col in df.select_dtypes(include="object").columns:
+    df[col] = le.fit_transform(df[col])
 
-claim_amount = st.number_input("Claim Amount",1000,60000)
+X = df.drop("Claim_Approved",axis=1)
+y = df["Claim_Approved"]
 
-incident = st.selectbox("Incident Type",["Accident","Theft","Fire","Natural Disaster"])
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2)
 
-gender_map = {"Male":0,"Female":1}
-policy_map = {"Basic":0,"Premium":1,"Gold":2}
-incident_map = {"Accident":0,"Theft":1,"Fire":2,"Natural Disaster":3}
+scaler = StandardScaler()
 
-input_data = np.array([[
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-age,
-gender_map[gender],
-policy_map[policy],
-claim_amount,
-incident_map[incident]
+model = RandomForestClassifier()
 
-]])
+model.fit(X_train,y_train)
 
-if st.button("Predict"):
-
-    input_scaled = scaler.transform(input_data)
-
-    prediction = model.predict(input_scaled)
-
-    if prediction[0] == 1:
-        st.success("Claim Approved")
-    else:
-        st.error("Claim Rejected")
+joblib.dump(model,"model.pkl")
+joblib.dump(scaler,"scaler.pkl")
